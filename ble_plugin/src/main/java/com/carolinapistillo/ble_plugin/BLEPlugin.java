@@ -40,7 +40,13 @@ public class BLEPlugin {
     private static final int ENABLE_BLUETOOTH_REQUEST_CODE = 1;
     private static final String DEVICE_ADDRESS = "94:B5:55:2C:C9:C2";
     private static final String SERVICE_UUID = "f020f474-36c6-4f9f-9fa5-9736ee68a8f9";
-    private static final String CHAR_FOR_READ_UUID = "fe3dae39-d576-4cd7-86e2-05b374258f20";
+
+    private static final String THUMB_FINGER_UUID = "ffd6cbd5-28fc-4fc7-8760-b74e93f1a73d";
+    private static final String INDEX_FINGER_UUID = "eb359b0e-fd69-4cfb-ad0d-9b4d4c3f83db";
+    private static final String MIDDLE_FINGER_UUID = "fe3dae39-d576-4cd7-86e2-05b374258f20";
+    private static final String RING_FINGER_UUID = "c18ca83e-8cba-4a57-811e-a5de911ffd41";
+    private static final String PINKY_FINGER_UUID = "b713cb87-4234-4ac8-af57-86cf72fdbc1a";
+
     private static final long SCAN_PERIOD = 10000;
 
     private Activity unityActivity;
@@ -60,8 +66,18 @@ public class BLEPlugin {
             .setReportDelay(0)
             .build();
     private BluetoothGatt connectedGatt;
-    private BluetoothGattCharacteristic characteristicForRead;
-    private UnityCallback onCharacteristicRead;
+
+    private BluetoothGattCharacteristic thumbCharacteristic;
+    private BluetoothGattCharacteristic indexCharacteristic;
+    private BluetoothGattCharacteristic middleCharacteristic;
+    private BluetoothGattCharacteristic ringCharacteristic;
+    private BluetoothGattCharacteristic pinkyCharacteristic;
+
+    private UnityCallback onThumbRead;
+    private UnityCallback onIndexRead;
+    private UnityCallback onMiddleRead;
+    private UnityCallback onRingRead;
+    private UnityCallback onPinkyRead;
 
     public static BLEPlugin getInstance(Activity activity)
     {
@@ -76,8 +92,16 @@ public class BLEPlugin {
         return _instance;
     }
 
-    public void connectUnityCallbacks(UnityCallback onCharacteristicRead) {
-        this.onCharacteristicRead = onCharacteristicRead;
+    public void connectUnityCallbacks(UnityCallback onThumbRead,
+                                      UnityCallback onIndexRead,
+                                      UnityCallback onMiddleRead,
+                                      UnityCallback onRingRead,
+                                      UnityCallback onPinkyRead) {
+        this.onThumbRead = onThumbRead;
+        this.onIndexRead = onIndexRead;
+        this.onMiddleRead = onMiddleRead;
+        this.onRingRead = onRingRead;
+        this.onPinkyRead = onPinkyRead;
     }
 
     private BLEPlugin(Activity activity) {
@@ -190,7 +214,13 @@ public class BLEPlugin {
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                     Log.d(TAG, "Disconneted from " + deviceAddress);
                     connectedGatt = (BluetoothGatt)null;
-                    characteristicForRead = (BluetoothGattCharacteristic)null;
+
+                    thumbCharacteristic = (BluetoothGattCharacteristic)null;
+                    indexCharacteristic= (BluetoothGattCharacteristic)null;
+                    middleCharacteristic = (BluetoothGattCharacteristic)null;
+                    ringCharacteristic = (BluetoothGattCharacteristic)null;
+                    pinkyCharacteristic = (BluetoothGattCharacteristic)null;
+
                     gatt.close();
                 }
             } else {
@@ -218,18 +248,40 @@ public class BLEPlugin {
             }
 
             connectedGatt = gatt;
-            characteristicForRead = service.getCharacteristic(UUID.fromString(CHAR_FOR_READ_UUID));
+            thumbCharacteristic = service.getCharacteristic(UUID.fromString(THUMB_FINGER_UUID));
+            indexCharacteristic = service.getCharacteristic(UUID.fromString(INDEX_FINGER_UUID));
+            middleCharacteristic = service.getCharacteristic(UUID.fromString(MIDDLE_FINGER_UUID));
+            ringCharacteristic = service.getCharacteristic(UUID.fromString(RING_FINGER_UUID));
+            pinkyCharacteristic = service.getCharacteristic(UUID.fromString(PINKY_FINGER_UUID));
+
             setUpFinished = true;
         }
 
         @Override
         public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
             super.onCharacteristicRead(gatt, characteristic, status);
-            if (characteristic.getUuid().equals(UUID.fromString(CHAR_FOR_READ_UUID))) {
+            if (characteristic.getUuid().equals(UUID.fromString(THUMB_FINGER_UUID))) {
                 String strValue = characteristic.getStringValue(0);
                 Log.d(TAG, strValue);
-                onCharacteristicRead.sendMessage(strValue);
-            } else {
+                onThumbRead.sendMessage(strValue);
+            } else if (characteristic.getUuid().equals(UUID.fromString(INDEX_FINGER_UUID))) {
+                String strValue = characteristic.getStringValue(0);
+                Log.d(TAG, strValue);
+                onIndexRead.sendMessage(strValue);
+            } else if (characteristic.getUuid().equals(UUID.fromString(MIDDLE_FINGER_UUID))) {
+                String strValue = characteristic.getStringValue(0);
+                Log.d(TAG, strValue);
+                onMiddleRead.sendMessage(strValue);
+            } else if (characteristic.getUuid().equals(UUID.fromString(RING_FINGER_UUID))) {
+                String strValue = characteristic.getStringValue(0);
+                Log.d(TAG, strValue);
+                onRingRead.sendMessage(strValue);
+            } else if (characteristic.getUuid().equals(UUID.fromString(PINKY_FINGER_UUID))) {
+                String strValue = characteristic.getStringValue(0);
+                Log.d(TAG, strValue);
+                onPinkyRead.sendMessage(strValue);
+            }
+            else {
                 Log.d(TAG, "Unknown characteristic");
             }
         }
@@ -242,8 +294,28 @@ public class BLEPlugin {
     };
 
     @SuppressLint("MissingPermission")
-    public void readCharacteristic() {
-        connectedGatt.readCharacteristic(characteristicForRead);
+    public void readThumbCharacteristic() {
+        connectedGatt.readCharacteristic(thumbCharacteristic);
+    }
+
+    @SuppressLint("MissingPermission")
+    public void readIndexCharacteristic() {
+        connectedGatt.readCharacteristic(indexCharacteristic);
+    }
+
+    @SuppressLint("MissingPermission")
+    public void readMiddleCharacteristic() {
+        connectedGatt.readCharacteristic(middleCharacteristic);
+    }
+
+    @SuppressLint("MissingPermission")
+    public void readRingCharacteristic() {
+        connectedGatt.readCharacteristic(ringCharacteristic);
+    }
+
+    @SuppressLint("MissingPermission")
+    public void readPinkyCharacteristic() {
+        connectedGatt.readCharacteristic(pinkyCharacteristic);
     }
 
     public boolean setUpFinished() {
