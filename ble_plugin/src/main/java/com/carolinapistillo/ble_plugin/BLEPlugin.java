@@ -25,6 +25,7 @@ import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -34,6 +35,8 @@ public class BLEPlugin {
     public interface UnityCallback {
         public void sendMessage(String message);
     }
+
+    List<BluetoothGattCharacteristic> chars = new ArrayList<>();
 
     private static volatile BLEPlugin _instance;;
     private static final String TAG = "BLEPlugin";
@@ -66,12 +69,6 @@ public class BLEPlugin {
             .setReportDelay(0)
             .build();
     private BluetoothGatt connectedGatt;
-
-    private BluetoothGattCharacteristic thumbCharacteristic;
-    private BluetoothGattCharacteristic indexCharacteristic;
-    private BluetoothGattCharacteristic middleCharacteristic;
-    private BluetoothGattCharacteristic ringCharacteristic;
-    private BluetoothGattCharacteristic pinkyCharacteristic;
 
     private UnityCallback onThumbRead;
     private UnityCallback onIndexRead;
@@ -215,12 +212,6 @@ public class BLEPlugin {
                     Log.d(TAG, "Disconneted from " + deviceAddress);
                     connectedGatt = (BluetoothGatt)null;
 
-                    thumbCharacteristic = (BluetoothGattCharacteristic)null;
-                    indexCharacteristic= (BluetoothGattCharacteristic)null;
-                    middleCharacteristic = (BluetoothGattCharacteristic)null;
-                    ringCharacteristic = (BluetoothGattCharacteristic)null;
-                    pinkyCharacteristic = (BluetoothGattCharacteristic)null;
-
                     gatt.close();
                 }
             } else {
@@ -247,42 +238,48 @@ public class BLEPlugin {
                 return;
             }
 
+            chars.addAll(service.getCharacteristics());
+            requestCharacteristics(gatt);
             connectedGatt = gatt;
-            thumbCharacteristic = service.getCharacteristic(UUID.fromString(THUMB_FINGER_UUID));
-            indexCharacteristic = service.getCharacteristic(UUID.fromString(INDEX_FINGER_UUID));
-            middleCharacteristic = service.getCharacteristic(UUID.fromString(MIDDLE_FINGER_UUID));
-            ringCharacteristic = service.getCharacteristic(UUID.fromString(RING_FINGER_UUID));
-            pinkyCharacteristic = service.getCharacteristic(UUID.fromString(PINKY_FINGER_UUID));
 
             setUpFinished = true;
         }
 
+        @SuppressLint("MissingPermission")
         @Override
         public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
             super.onCharacteristicRead(gatt, characteristic, status);
             if (characteristic.getUuid().equals(UUID.fromString(THUMB_FINGER_UUID))) {
                 String strValue = characteristic.getStringValue(0);
-                Log.d(TAG, strValue);
+                Log.d(TAG, "THUMB: " + strValue);
                 onThumbRead.sendMessage(strValue);
             } else if (characteristic.getUuid().equals(UUID.fromString(INDEX_FINGER_UUID))) {
                 String strValue = characteristic.getStringValue(0);
-                Log.d(TAG, strValue);
+                Log.d(TAG, "INDEX: " + strValue);
                 onIndexRead.sendMessage(strValue);
             } else if (characteristic.getUuid().equals(UUID.fromString(MIDDLE_FINGER_UUID))) {
                 String strValue = characteristic.getStringValue(0);
-                Log.d(TAG, strValue);
+                Log.d(TAG, "MIDDLE: " + strValue);
                 onMiddleRead.sendMessage(strValue);
             } else if (characteristic.getUuid().equals(UUID.fromString(RING_FINGER_UUID))) {
                 String strValue = characteristic.getStringValue(0);
-                Log.d(TAG, strValue);
+                Log.d(TAG, "RING: " + strValue);
                 onRingRead.sendMessage(strValue);
             } else if (characteristic.getUuid().equals(UUID.fromString(PINKY_FINGER_UUID))) {
                 String strValue = characteristic.getStringValue(0);
-                Log.d(TAG, strValue);
+                Log.d(TAG, "PINKY: " + strValue);
                 onPinkyRead.sendMessage(strValue);
             }
             else {
                 Log.d(TAG, "Unknown characteristic");
+            }
+
+            chars.remove(chars.get(chars.size() - 1));
+
+            if (chars.size() > 0) {
+                requestCharacteristics(gatt);
+            } else {
+                connectedGatt.disconnect();
             }
         }
 
@@ -294,28 +291,8 @@ public class BLEPlugin {
     };
 
     @SuppressLint("MissingPermission")
-    public void readThumbCharacteristic() {
-        connectedGatt.readCharacteristic(thumbCharacteristic);
-    }
-
-    @SuppressLint("MissingPermission")
-    public void readIndexCharacteristic() {
-        connectedGatt.readCharacteristic(indexCharacteristic);
-    }
-
-    @SuppressLint("MissingPermission")
-    public void readMiddleCharacteristic() {
-        connectedGatt.readCharacteristic(middleCharacteristic);
-    }
-
-    @SuppressLint("MissingPermission")
-    public void readRingCharacteristic() {
-        connectedGatt.readCharacteristic(ringCharacteristic);
-    }
-
-    @SuppressLint("MissingPermission")
-    public void readPinkyCharacteristic() {
-        connectedGatt.readCharacteristic(pinkyCharacteristic);
+    public void requestCharacteristics(BluetoothGatt gatt) {
+        gatt.readCharacteristic(chars.get(chars.size() - 1));
     }
 
     public boolean setUpFinished() {
