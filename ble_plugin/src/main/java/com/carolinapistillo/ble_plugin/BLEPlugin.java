@@ -23,8 +23,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
-import androidx.annotation.RequiresApi;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -42,13 +40,21 @@ public class BLEPlugin {
     private static final String TAG = "BLEPlugin";
     private static final int ENABLE_BLUETOOTH_REQUEST_CODE = 1;
     private static final String DEVICE_ADDRESS = "94:B5:55:2C:C9:C2";
-    private static final String SERVICE_UUID = "f020f474-36c6-4f9f-9fa5-9736ee68a8f9";
+    private static final String FLEX_SENSOR_SERVICE_UUID = "f020f474-36c6-4f9f-9fa5-9736ee68a8f9";
+    private static final String MPU_SERVICE_UUID = "87c26127-73d1-4eb2-9531-f202d75bc7ba";
 
     private static final String THUMB_FINGER_UUID = "ffd6cbd5-28fc-4fc7-8760-b74e93f1a73d";
     private static final String INDEX_FINGER_UUID = "eb359b0e-fd69-4cfb-ad0d-9b4d4c3f83db";
     private static final String MIDDLE_FINGER_UUID = "fe3dae39-d576-4cd7-86e2-05b374258f20";
     private static final String RING_FINGER_UUID = "c18ca83e-8cba-4a57-811e-a5de911ffd41";
     private static final String PINKY_FINGER_UUID = "b713cb87-4234-4ac8-af57-86cf72fdbc1a";
+
+    private static final String ACCEL_X_UUID = "fd27e73f-e235-472a-9c4d-6cf85665a9af";
+    private static final String ACCEL_Y_UUID = "f81cb7d1-26bd-4954-b3ef-685ca4cc8f03";
+    private static final String ACCEL_Z_UUID = "9ac1c4cc-67a2-487d-ad04-ba7aeabf89b3";
+    private static final String GYRO_X_UUID = "b67f8d22-3085-4455-83cf-124c5054dd02";
+    private static final String GYRO_Y_UUID = "b6f85fdc-d3a9-4e85-bdac-d88cd6ce3c7d";
+    private static final String GYRO_Z_UUID = "796dc4e0-d89c-4bae-b4d9-475505a5d72d";
 
     private static final long SCAN_PERIOD = 10000;
 
@@ -69,13 +75,21 @@ public class BLEPlugin {
             .setReportDelay(0)
             .build();
     private BluetoothGatt connectedGatt;
-    private BluetoothGattService service;
+    private BluetoothGattService flexSensorService;
+    private BluetoothGattService mpuService;
 
     private UnityCallback onThumbRead;
     private UnityCallback onIndexRead;
     private UnityCallback onMiddleRead;
     private UnityCallback onRingRead;
     private UnityCallback onPinkyRead;
+
+    private UnityCallback onAccelXRead;
+    private UnityCallback onAccelYRead;
+    private UnityCallback onAccelZRead;
+    private UnityCallback onGyroXRead;
+    private UnityCallback onGyroYRead;
+    private UnityCallback onGyroZRead;
 
     public static BLEPlugin getInstance(Activity activity)
     {
@@ -94,12 +108,25 @@ public class BLEPlugin {
                                       UnityCallback onIndexRead,
                                       UnityCallback onMiddleRead,
                                       UnityCallback onRingRead,
-                                      UnityCallback onPinkyRead) {
+                                      UnityCallback onPinkyRead,
+                                      UnityCallback onAccelXRead,
+                                      UnityCallback onAccelYRead,
+                                      UnityCallback onAccelZRead,
+                                      UnityCallback onGyroXRead,
+                                      UnityCallback onGyroYRead,
+                                      UnityCallback onGyroZRead) {
         this.onThumbRead = onThumbRead;
         this.onIndexRead = onIndexRead;
         this.onMiddleRead = onMiddleRead;
         this.onRingRead = onRingRead;
         this.onPinkyRead = onPinkyRead;
+
+        this.onAccelXRead = onAccelXRead;
+        this.onAccelYRead = onAccelYRead;
+        this.onAccelZRead = onAccelZRead;
+        this.onGyroXRead = onGyroXRead;
+        this.onGyroYRead = onGyroYRead;
+        this.onGyroZRead = onGyroZRead;
     }
 
     private BLEPlugin(Activity activity) {
@@ -232,14 +259,24 @@ public class BLEPlugin {
                 return;
             }
 
-            service = gatt.getService(UUID.fromString(SERVICE_UUID));
-            if(service == null) {
-                Log.d(TAG, "ERROR: Service not found " + SERVICE_UUID + ", disconnecting");
+            flexSensorService = gatt.getService(UUID.fromString(FLEX_SENSOR_SERVICE_UUID));
+            if(flexSensorService == null) {
+                Log.d(TAG, "ERROR: Service not found " + FLEX_SENSOR_SERVICE_UUID + ", disconnecting");
                 gatt.disconnect();
                 return;
             }
 
-            chars.addAll(service.getCharacteristics());
+            chars.addAll(flexSensorService.getCharacteristics());
+
+            mpuService = gatt.getService(UUID.fromString(MPU_SERVICE_UUID));
+            if(mpuService == null) {
+                Log.d(TAG, "ERROR: Service not found " + MPU_SERVICE_UUID + ", disconnecting");
+                gatt.disconnect();
+                return;
+            }
+
+            chars.addAll(mpuService.getCharacteristics());
+
             connectedGatt = gatt;
             requestCharacteristics();
 
@@ -252,19 +289,54 @@ public class BLEPlugin {
             super.onCharacteristicRead(gatt, characteristic, status);
             if (characteristic.getUuid().equals(UUID.fromString(THUMB_FINGER_UUID))) {
                 String strValue = characteristic.getStringValue(0);
+                onThumbRead.sendMessage(strValue);
                 Log.d(TAG, "THUMB: " + strValue);
             } else if (characteristic.getUuid().equals(UUID.fromString(INDEX_FINGER_UUID))) {
                 String strValue = characteristic.getStringValue(0);
+                onIndexRead.sendMessage(strValue);
                 Log.d(TAG, "INDEX: " + strValue);
             } else if (characteristic.getUuid().equals(UUID.fromString(MIDDLE_FINGER_UUID))) {
                 String strValue = characteristic.getStringValue(0);
+                onMiddleRead.sendMessage(strValue);
                 Log.d(TAG, "MIDDLE: " + strValue);
             } else if (characteristic.getUuid().equals(UUID.fromString(RING_FINGER_UUID))) {
                 String strValue = characteristic.getStringValue(0);
+                onRingRead.sendMessage(strValue);
                 Log.d(TAG, "RING: " + strValue);
             } else if (characteristic.getUuid().equals(UUID.fromString(PINKY_FINGER_UUID))) {
                 String strValue = characteristic.getStringValue(0);
+                onPinkyRead.sendMessage(strValue);
                 Log.d(TAG, "PINKY: " + strValue);
+            }
+            else if (characteristic.getUuid().equals(UUID.fromString(ACCEL_X_UUID))) {
+                String strValue = characteristic.getStringValue(0);
+                onAccelXRead.sendMessage(strValue);
+                Log.d(TAG, "ACCEL_X: " + strValue);
+            }
+            else if (characteristic.getUuid().equals(UUID.fromString(ACCEL_Y_UUID))) {
+                String strValue = characteristic.getStringValue(0);
+                onAccelYRead.sendMessage(strValue);
+                Log.d(TAG, "ACCEL_Y: " + strValue);
+            }
+            else if (characteristic.getUuid().equals(UUID.fromString(ACCEL_Z_UUID))) {
+                String strValue = characteristic.getStringValue(0);
+                onAccelZRead.sendMessage(strValue);
+                Log.d(TAG, "ACCEL_Z: " + strValue);
+            }
+            else if (characteristic.getUuid().equals(UUID.fromString(GYRO_X_UUID))) {
+                String strValue = characteristic.getStringValue(0);
+                onGyroXRead.sendMessage(strValue);
+                Log.d(TAG, "GYRO_X: " + strValue);
+            }
+            else if (characteristic.getUuid().equals(UUID.fromString(GYRO_Y_UUID))) {
+                String strValue = characteristic.getStringValue(0);
+                onGyroYRead.sendMessage(strValue);
+                Log.d(TAG, "GYRO_Y: " + strValue);
+            }
+            else if (characteristic.getUuid().equals(UUID.fromString(GYRO_Z_UUID))) {
+                String strValue = characteristic.getStringValue(0);
+                onGyroZRead.sendMessage(strValue);
+                Log.d(TAG, "GYRO_Z: " + strValue);
             }
             else {
                 Log.d(TAG, "Unknown characteristic");
@@ -285,7 +357,8 @@ public class BLEPlugin {
     @SuppressLint("MissingPermission")
     public void requestCharacteristics() {
         if (chars.size() == 0) {
-            chars.addAll(service.getCharacteristics());
+            chars.addAll(flexSensorService.getCharacteristics());
+            chars.addAll(mpuService.getCharacteristics());
         }
         if(chars.size() > 0) {
             connectedGatt.readCharacteristic(chars.get(chars.size() - 1));
